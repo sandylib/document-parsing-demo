@@ -26,6 +26,23 @@ interface CanonicalBlock {
 
 Events: `message.started`, `retrieval.completed`, `text.delta`, `citation.available`, `message.completed`, `message.failed`. Every event has message ID and increasing sequence.
 
+Ingestion uses a separate stable event shape:
+
+```typescript
+type IngestionQueueEvent = {
+  jobId: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'stalled';
+  progress?: number;
+  error?: string;
+};
+```
+
+The browser treats this as an invalidation signal and refetches authoritative status from PostgreSQL.
+
+## Job queue
+
+`JobQueue.enqueue({ jobId, versionId })` is an outbound application port. `ingestion_jobs.id` is also the BullMQ `jobId`, providing idempotent queue identity. Payloads contain identifiers only. BullMQ transport state controls delivery, retries and stalled recovery; it is never exposed as the REST domain model. `JobRepository` records processing attempts, coarse progress, errors and terminal status in PostgreSQL.
+
 ## Evidence bundle
 
 Evidence is immutable for one answer run and includes stable evidence ID, chunk ID, document/version ID, title, section path, page, excerpt and retrieval score. Citation output references evidence IDs only.

@@ -3,7 +3,7 @@ set -euo pipefail
 corepack install --global pnpm@10.17.1 >/dev/null
 pnpm install
 if [[ ! -f .env ]]; then cp .env.example .env; fi
-docker compose up -d postgres
+docker compose up -d postgres redis
 if command -v security >/dev/null 2>&1 && security find-certificate -a -c Zscaler -p /Library/Keychains/System.keychain > infra/ollama/local-ca.crt 2>/dev/null && [[ -s infra/ollama/local-ca.crt ]]; then
   docker compose -f docker-compose.yml -f docker-compose.corporate-ca.yml up -d --build ollama
 else

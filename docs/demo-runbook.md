@@ -4,10 +4,11 @@
 1. Run `pnpm setup` once.
 2. In separate terminals run `pnpm dev:api`, `pnpm worker`, and `pnpm dev:web`.
 3. Run `pnpm seed` and open http://localhost:3000.
-4. Confirm `/health` reports database, chat and embedding as true.
+4. Run `docker compose exec redis redis-cli ping` and expect `PONG`.
+5. Confirm `/health` reports database, queue, chat and embedding as true.
 
 ## Scenario 1 — AI-ready ingestion
-Upload a born-digital PDF or inspect the seeded policy. Show queued → processing → ready. Explain canonical blocks, structure-aware chunks, parser/pipeline versions and atomic promotion.
+Upload a born-digital PDF or inspect the seeded policy. Show queued → processing progress → ready without polling the queue. Explain that BullMQ carries only IDs, uses three attempts with exponential backoff and one local worker, while PostgreSQL remains the reconnect/status source of truth.
 
 ## Scenario 2 — Grounded current answer
 Ask: “How long does a device request take?”
@@ -30,4 +31,4 @@ pnpm --filter @demo/api exec tsx scripts/smoke-mcp.ts
 Show that the external MCP client discovers only `search_knowledge` and `get_source`, while the handlers reuse authorization-aware application use cases.
 
 ## Close
-Open [solution-design.md](solution-design.md) and summarize production evolution: source connectors, specialist OCR/layout adapters, enterprise ACL synchronization, object storage, managed queue and measured search scaling.
+Open [solution-design.md](solution-design.md) and summarize production evolution: source connectors, specialist OCR/layout adapters, enterprise ACL synchronization, object storage, measured BullMQ worker scaling and measured search scaling.

@@ -40,6 +40,7 @@ export interface DocumentSummary {
   currentVersionId?: string;
   versionNumber?: number;
   status?: string;
+  progress?: number;
   warnings: string[];
   createdAt: string;
 }

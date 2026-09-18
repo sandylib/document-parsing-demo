@@ -1,6 +1,6 @@
 # ADR 0004: Single PostgreSQL-leased worker
 
-Status: Accepted for demo
+Status: Superseded by [ADR 0005](0005-bullmq-redis.md)
 
 A separately started worker atomically claims jobs with `FOR UPDATE SKIP LOCKED`, lease expiry, attempts and bounded retry delay. It shares application code with the API.
 

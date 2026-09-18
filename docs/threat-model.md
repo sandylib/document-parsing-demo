@@ -10,6 +10,7 @@ Original documents, restricted chunks, authorization metadata, model credentials
 - Citations: evidence IDs are server-issued and resolved through authorization-aware use cases.
 - MCP: loopback binding, bearer token, origin validation, schema validation and bounded tool output.
 - Model providers: keys stay server-side; raw provider events do not reach the browser.
+- Queue: Redis binds locally for the demo, uses `noeviction`, and carries only validated job/version IDs. Workers load authoritative metadata from PostgreSQL; document bodies, ACLs and model inputs never enter BullMQ. Production adds authenticated TLS, network isolation, rate/concurrency limits and Redis high availability.
 - Logging: IDs/timings/status are recorded; full restricted bodies, secrets and hidden reasoning are not.
 
 ## Verified abuse cases

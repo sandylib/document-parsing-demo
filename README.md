@@ -8,7 +8,8 @@ The primary submission is [docs/solution-design.md](docs/solution-design.md). Se
 - Next.js feature layers: `app → features → domains → core`.
 - NestJS clean architecture: presentation adapters → application use cases/ports ← infrastructure adapters.
 - REST/SSE for browser workflows; two read-only MCP tools for external AI clients.
-- PostgreSQL + pgvector for jobs, immutable versions, canonical blocks, hybrid search and answer audit.
+- PostgreSQL + pgvector for authoritative processing status, immutable versions, canonical blocks, hybrid search and answer audit.
+- Redis-backed BullMQ for identifier-only job delivery, retries, progress and worker coordination.
 - Ollama/Qwen by default. Provider-neutral ports can select OpenAI via environment variables.
 
 ## Prerequisites
@@ -26,7 +27,7 @@ pnpm dev:web       # terminal 3
 pnpm seed
 ```
 
-Open http://localhost:3000. API docs are at http://localhost:3001/openapi and health at http://localhost:3001/health.
+Open http://localhost:3000. API docs are at http://localhost:3001/openapi and health at http://localhost:3001/health. Redis is exposed locally at `redis://localhost:6379` with `noeviction`; it is queue infrastructure, not an application data source.
 
 `pnpm setup` detects a Zscaler root on macOS and builds a local Ollama image with that CA. The exported local certificate is ignored by git. Without TLS interception it uses the official image directly.
 
@@ -56,6 +57,6 @@ Embedding providers are configured separately. Changing embeddings requires clea
 
 ## Known limitations
 - PDF structure uses a deterministic text extractor and lightweight heuristics; OCR, complex tables and multi-column layout need dedicated adapters.
-- One local worker and PostgreSQL leasing are suitable for the demo, not high-throughput ingestion.
+- BullMQ worker concurrency is one for predictable local model usage; production throughput requires measured worker scaling and Redis operations.
 - The evaluation corpus is deliberately small and manually reviewed.
 - The local role adapter, filesystem and token are replaceable demo adapters.

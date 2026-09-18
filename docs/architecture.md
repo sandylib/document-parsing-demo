@@ -9,7 +9,9 @@ flowchart LR
     External[External MCP client] -->|Streamable HTTP| Mcp[NestJS MCP adapter]
     Api --> App[Application use cases]
     Mcp --> App
-    Worker[Worker bootstrap] --> App
+    Api -->|enqueue IDs| Redis[(Redis and BullMQ)]
+    Redis -->|document-ingestion| Worker[Worker module]
+    Worker --> App
     App --> Pg[(PostgreSQL and pgvector)]
     App --> Files[Local object storage]
     App --> Parsers[Deterministic parsers]
@@ -35,19 +37,25 @@ sequenceDiagram
     participant UI as Next.js
     participant API as REST
     participant DB as PostgreSQL
+    participant Q as BullMQ/Redis
     participant W as Worker
     participant P as Parser
     participant E as Embedding
     UI->>API: upload document
-    API->>DB: register version and job
+    API->>DB: register version and status record
+    API->>Q: enqueue jobId and versionId
     API-->>UI: 202 job ID
-    W->>DB: claim lease
+    Q->>W: deliver process-document
+    W->>DB: mark processing
     W->>P: parse stored file
     P-->>W: canonical blocks and warnings
     W->>E: embed chunks
     E-->>W: vectors
     W->>DB: atomic persist and promote
-    UI->>API: poll job/version
+    W->>Q: update progress / complete
+    Q-->>API: global lifecycle event
+    API-->>UI: ingestion SSE event
+    UI->>API: refetch authoritative status
 ```
 
 ## Grounded answer sequence
@@ -75,3 +83,4 @@ sequenceDiagram
 - Identity and authorization scope are derived by the host, never accepted from model tool arguments.
 - Evidence IDs are issued by retrieval and resolved server-side.
 - MCP transport types and provider SDK types stop at adapters.
+- BullMQ payloads contain immutable identifiers only; workers load document metadata and content locations from PostgreSQL.

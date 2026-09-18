@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PoolClient } from 'pg';
-import type { AnswerRunRepository, CompletedProcessing, DocumentRepository, JobRepository, ProcessingJob, RetrievalRepository, UploadReceipt, UploadRegistration } from '../../application/ports/repositories.port.js';
+import type { AnswerRunRepository, CompletedProcessing, DocumentRepository, JobRepository, RetrievalRepository, UploadReceipt, UploadRegistration } from '../../application/ports/repositories.port.js';
 import type { DocumentSummary, Evidence, Visibility } from '../../core/knowledge.types.js';
 import { PostgresService } from '../database/postgres.service.js';
 
@@ -24,12 +23,28 @@ export class PostgresKnowledgeRepository implements DocumentRepository, JobRepos
     });
   }
   async list(): Promise<DocumentSummary[]> {
-    const result = await this.db.query<{ id:string;title:string;visibility:Visibility;current_version_id:string|null;version_number:number|null;status:string|null;warnings:unknown;created_at:Date }>(`SELECT d.id,d.title,d.visibility,v.id current_version_id,v.version_number,v.status,v.warnings,d.created_at FROM documents d LEFT JOIN document_versions v ON v.document_id=d.id AND (v.is_current OR (v.id=(SELECT v2.id FROM document_versions v2 WHERE v2.document_id=d.id ORDER BY v2.created_at DESC LIMIT 1))) ORDER BY d.created_at DESC`);
-    return result.rows.map((r) => ({ id:r.id,title:r.title,visibility:r.visibility,currentVersionId:r.current_version_id??undefined,versionNumber:r.version_number??undefined,status:r.status??undefined,warnings:Array.isArray(r.warnings)?r.warnings as string[]:[],createdAt:r.created_at.toISOString() }));
-  }
-  async claimNext(): Promise<ProcessingJob | null> {
-    const result = await this.db.query<{ id:string;version_id:string;attempts:number }>(`WITH candidate AS (SELECT id FROM ingestion_jobs WHERE (status='queued' AND available_at<=now()) OR (status='processing' AND lease_expires_at<now()) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE ingestion_jobs j SET status='processing',attempts=attempts+1,lease_expires_at=now()+interval '2 minutes',updated_at=now() FROM candidate c WHERE j.id=c.id RETURNING j.id,j.version_id,j.attempts`);
-    const row=result.rows[0]; return row?{id:row.id,versionId:row.version_id,attempts:row.attempts}:null;
+    const result = await this.db.query<{ id:string;title:string;visibility:Visibility;current_version_id:string|null;version_number:number|null;status:string|null;progress:number|null;warnings:unknown;created_at:Date }>(`
+      SELECT d.id,d.title,d.visibility,v.id current_version_id,v.version_number,v.status,
+        j.progress,v.warnings,d.created_at
+      FROM documents d
+      LEFT JOIN LATERAL (
+        SELECT * FROM document_versions
+        WHERE document_id=d.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) v ON true
+      LEFT JOIN LATERAL (
+        SELECT progress FROM ingestion_jobs
+        WHERE version_id=v.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) j ON true
+      ORDER BY d.created_at DESC`);
+    return result.rows.map((r) => ({
+      id:r.id,title:r.title,visibility:r.visibility,currentVersionId:r.current_version_id??undefined,
+      versionNumber:r.version_number??undefined,status:r.status??undefined,progress:r.progress??undefined,
+      warnings:Array.isArray(r.warnings)?r.warnings as string[]:[],createdAt:r.created_at.toISOString(),
+    }));
   }
   async loadProcessableVersion(versionId: string) {
     const result=await this.db.query<{ id:string;document_id:string;title:string;visibility:Visibility;storage_key:string;mime_type:string;original_name:string }>(`SELECT v.id,v.document_id,d.title,d.visibility,v.storage_key,v.mime_type,v.original_name FROM document_versions v JOIN documents d ON d.id=v.document_id WHERE v.id=$1`,[versionId]);
@@ -47,26 +62,82 @@ export class PostgresKnowledgeRepository implements DocumentRepository, JobRepos
       }
       await client.query(`UPDATE document_versions SET is_current=false,status=CASE WHEN status='ready' THEN 'superseded' ELSE status END WHERE document_id=$1 AND is_current`,[input.version.documentId]);
       await client.query(`UPDATE document_versions SET is_current=true,status='ready',warnings=$2::jsonb WHERE id=$1`,[input.version.id,JSON.stringify(input.warnings)]);
-      await client.query(`UPDATE ingestion_jobs SET status='completed',lease_expires_at=NULL,updated_at=now() WHERE id=$1`,[input.jobId]);
+      await client.query(`UPDATE ingestion_jobs SET status='completed',progress=100,last_error=NULL,updated_at=now() WHERE id=$1`,[input.jobId]);
     });
   }
-  async fail(job: ProcessingJob, message: string): Promise<void> {
-    const terminal=job.attempts>=3;
-    await this.db.transaction(async(client:PoolClient)=>{
-      await client.query(`UPDATE ingestion_jobs SET status=$2,last_error=$3,lease_expires_at=NULL,available_at=now()+($4*interval '1 second'),updated_at=now() WHERE id=$1`,[job.id,terminal?'failed':'queued',message,Math.min(30,2**job.attempts)]);
-      if(terminal) await client.query(`UPDATE document_versions SET status='failed',warnings=$2::jsonb WHERE id=$1`,[job.versionId,JSON.stringify([message])]);
+  async markEnqueueFailed(jobId: string, message: string): Promise<void> {
+    await this.db.transaction(async (client) => {
+      const job = await client.query<{ version_id: string }>(
+        `UPDATE ingestion_jobs SET status='failed',last_error=$2,updated_at=now()
+         WHERE id=$1 RETURNING version_id`,
+        [jobId, message],
+      );
+      if (job.rows[0]) {
+        await client.query(
+          `UPDATE document_versions SET status='failed',warnings=$2::jsonb WHERE id=$1`,
+          [job.rows[0].version_id, JSON.stringify([message])],
+        );
+      }
+    });
+  }
+  async markProcessing(jobId: string, attempt: number): Promise<void> {
+    await this.db.transaction(async (client) => {
+      const job = await client.query<{ version_id: string }>(
+        `UPDATE ingestion_jobs SET status='processing',attempts=$2,progress=0,last_error=NULL,updated_at=now()
+         WHERE id=$1 RETURNING version_id`,
+        [jobId, attempt],
+      );
+      if (!job.rows[0]) throw new Error('Ingestion job not found');
+      await client.query(`UPDATE document_versions SET status='processing' WHERE id=$1`, [job.rows[0].version_id]);
+    });
+  }
+  async updateProgress(jobId: string, progress: number): Promise<void> {
+    await this.db.query(
+      `UPDATE ingestion_jobs SET progress=$2,updated_at=now() WHERE id=$1`,
+      [jobId, Math.min(100, Math.max(0, Math.round(progress)))],
+    );
+  }
+  async recordAttemptFailure(jobId: string, attempt: number, message: string, terminal: boolean): Promise<void> {
+    await this.db.transaction(async (client) => {
+      const job = await client.query<{ version_id: string }>(
+        `UPDATE ingestion_jobs SET status=$2,attempts=$3,last_error=$4,updated_at=now()
+         WHERE id=$1 RETURNING version_id`,
+        [jobId, terminal ? 'failed' : 'queued', attempt, message],
+      );
+      if (job.rows[0]) {
+        await client.query(
+          `UPDATE document_versions SET status=$2,warnings=$3::jsonb WHERE id=$1`,
+          [job.rows[0].version_id, terminal ? 'failed' : 'pending', JSON.stringify([message])],
+        );
+      }
     });
   }
   async search(queryEmbedding:number[],query:string,role:Visibility,limit:number):Promise<Evidence[]> {
-    const result=await this.db.query<{id:string;document_id:string;version_id:string;title:string;text_content:string;page:number|null;section_path:string[];score:number}>(`WITH eligible AS (
+    const result=await this.db.query<{id:string;document_id:string;version_id:string;title:string;text_content:string;page:number|null;section_path:string[];score:number}>(`WITH query_terms AS (
+      SELECT to_tsquery('english',replace(plainto_tsquery('english',$2)::text,' & ',' | ')) value,
+        tsvector_to_array(to_tsvector('english',$2)) terms
+    ), eligible AS (
       SELECT c.*,v.document_id,d.title FROM chunks c JOIN document_versions v ON v.id=c.version_id JOIN documents d ON d.id=v.document_id WHERE v.is_current AND v.status='ready' AND (c.visibility='public' OR $3='staff')
     ), semantic AS (SELECT id,row_number() OVER(ORDER BY embedding <=> $1::vector) rank FROM eligible ORDER BY embedding <=> $1::vector LIMIT 20),
-    lexical AS (SELECT id,row_number() OVER(ORDER BY ts_rank_cd(search_vector,websearch_to_tsquery('english',$2)) DESC) rank FROM eligible WHERE search_vector @@ websearch_to_tsquery('english',$2) ORDER BY ts_rank_cd(search_vector,websearch_to_tsquery('english',$2)) DESC LIMIT 20),
-    ranked AS (SELECT id,SUM(score) score FROM (SELECT id,1.0/(60+rank) score FROM semantic UNION ALL SELECT id,1.0/(60+rank) score FROM lexical) x GROUP BY id ORDER BY score DESC LIMIT $4)
+    lexical AS (
+      SELECT id,row_number() OVER(ORDER BY matches DESC,lexical_score DESC) rank
+      FROM (
+        SELECT e.id,m.matches,ts_rank_cd(e.search_vector,q.value) lexical_score
+        FROM eligible e CROSS JOIN query_terms q
+        CROSS JOIN LATERAL (
+          SELECT count(*)::int matches FROM unnest(q.terms) term
+          WHERE e.search_vector @@ to_tsquery('english',term)
+        ) m
+        WHERE m.matches >= LEAST(2,cardinality(q.terms))
+      ) candidates
+      ORDER BY matches DESC,lexical_score DESC
+      LIMIT 20
+    ),
+    ranked AS (SELECT id,SUM(score) score FROM (SELECT id,1.0/(60+rank) score FROM semantic UNION ALL SELECT id,2.0/(60+rank) score FROM lexical) x GROUP BY id ORDER BY score DESC LIMIT $4)
     SELECT e.id,e.document_id,e.version_id,e.title,e.text_content,e.page,e.section_path,
-      GREATEST(1-(e.embedding <=> $1::vector),CASE WHEN e.search_vector @@ websearch_to_tsquery('english',$2) THEN 0.5 ELSE 0 END) score
+      GREATEST(1-(e.embedding <=> $1::vector),CASE WHEN e.id IN (SELECT id FROM lexical) THEN 0.5 ELSE 0 END) score
     FROM ranked r JOIN eligible e ON e.id=r.id
-    WHERE 1-(e.embedding <=> $1::vector) >= 0.4 OR e.search_vector @@ websearch_to_tsquery('english',$2)
+    WHERE 1-(e.embedding <=> $1::vector) >= 0.6 OR e.id IN (SELECT id FROM lexical)
     ORDER BY r.score DESC`,[vectorLiteral(queryEmbedding),query,role,limit]);
     return result.rows.map(r=>({evidenceId:r.id,chunkId:r.id,documentId:r.document_id,versionId:r.version_id,title:r.title,text:r.text_content,page:r.page??undefined,sectionPath:r.section_path,score:Number(r.score)}));
   }

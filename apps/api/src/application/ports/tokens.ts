@@ -1,5 +1,6 @@
 export const DOCUMENT_REPOSITORY = Symbol('DOCUMENT_REPOSITORY');
 export const JOB_REPOSITORY = Symbol('JOB_REPOSITORY');
+export const JOB_QUEUE = Symbol('JOB_QUEUE');
 export const RETRIEVAL_REPOSITORY = Symbol('RETRIEVAL_REPOSITORY');
 export const ANSWER_RUN_REPOSITORY = Symbol('ANSWER_RUN_REPOSITORY');
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE');

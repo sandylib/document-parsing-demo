@@ -11,7 +11,6 @@ export interface UploadRegistration {
   pipelineRevision: string;
 }
 export interface UploadReceipt { documentId: string; versionId: string; jobId: string; duplicate: boolean }
-export interface ProcessingJob { id: string; versionId: string; attempts: number }
 export interface ProcessableVersion {
   id: string;
   documentId: string;
@@ -37,8 +36,10 @@ export interface DocumentRepository {
   completeProcessing(input: CompletedProcessing): Promise<void>;
 }
 export interface JobRepository {
-  claimNext(): Promise<ProcessingJob | null>;
-  fail(job: ProcessingJob, message: string): Promise<void>;
+  markEnqueueFailed(jobId: string, message: string): Promise<void>;
+  markProcessing(jobId: string, attempt: number): Promise<void>;
+  updateProgress(jobId: string, progress: number): Promise<void>;
+  recordAttemptFailure(jobId: string, attempt: number, message: string, terminal: boolean): Promise<void>;
 }
 export interface RetrievalRepository {
   search(queryEmbedding: number[], query: string, role: Visibility, limit: number): Promise<Evidence[]>;

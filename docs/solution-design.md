@@ -11,7 +11,8 @@ The design uses deterministic parsers, asynchronous ingestion, PostgreSQL/pgvect
 ### Demo scope
 - Manual upload of born-digital PDF, Markdown and TXT.
 - Local filesystem for originals behind an object-storage port.
-- PostgreSQL for documents, immutable versions, jobs, canonical blocks, chunks and audit records.
+- PostgreSQL for documents, immutable versions, authoritative ingestion status, canonical blocks, chunks and audit records.
+- Redis-backed BullMQ for asynchronous job delivery, retry timing, progress and worker coordination.
 - pgvector embeddings from Ollama; PostgreSQL full-text search for lexical retrieval.
 - Local Qwen chat through Ollama.
 - Two read-only MCP tools: `search_knowledge` and `get_source`.
@@ -19,7 +20,7 @@ The design uses deterministic parsers, asynchronous ingestion, PostgreSQL/pgvect
 
 ### Deferred but designed for
 - DOCX, scanned PDFs/OCR, table-specialist extraction, images and multilingual content.
-- SharePoint/CMS connectors, malware scanning, SSO, cloud object storage and a managed queue.
+- SharePoint/CMS connectors, malware scanning, SSO and cloud object storage.
 - Horizontal scaling and production deployment.
 
 ### Definition of AI-ready
@@ -41,7 +42,7 @@ An AI-ready version is immutable and contains ordered typed blocks, hierarchy, p
 
 ### Non-functional
 - Security: no unauthorized chunk, citation or existence disclosure; untrusted documents cannot change instructions.
-- Reliability: durable jobs, atomic claim/promotion, bounded retries and stale-job recovery.
+- Reliability: durable BullMQ delivery, bounded retries/stalled-job recovery and atomic PostgreSQL promotion.
 - Reproducibility: pipeline revision and answer-run records.
 - Maintainability: SOLID at external boundaries, simple domain logic, enforced import direction.
 - Observability: correlation IDs, structured events, processing timings and actionable errors.
@@ -53,20 +54,22 @@ See [architecture.md](architecture.md). The principal boundaries are:
 - Next.js: UI composition and browser state only.
 - REST/SSE: upload, status, search diagnostics and streamed answers.
 - NestJS application: ingestion, retrieval, authorization and answer policy.
-- Worker bootstrap: claims durable jobs and invokes ingestion use cases.
+- API composition: persists status then enqueues identifier-only jobs.
+- Worker composition: consumes BullMQ jobs and invokes ingestion use cases.
 - MCP: maps transport DTOs to the same search/source application commands.
-- Infrastructure adapters: PostgreSQL, filesystem, parsers and Ollama.
+- Infrastructure adapters: PostgreSQL, Redis/BullMQ, filesystem, parsers and Ollama.
 
 ## Processing flow
 
-1. REST validates metadata, streams the file to storage, calculates SHA-256 and registers an immutable pending version/job.
-2. A worker atomically leases the next job.
-3. The selected deterministic parser emits canonical blocks and warnings.
-4. Normalization and quality checks produce a pipeline-revisioned representation.
-5. Structure-aware chunks retain block, section and page links.
-6. The embedding adapter creates vectors using the configured embedding profile.
-7. One transaction stores blocks/chunks and promotes the version to current; failure leaves the previous current version untouched.
-8. Retries are idempotent and stale leases are recoverable.
+1. REST validates metadata, streams the file to storage, calculates SHA-256 and registers an immutable pending version plus `ingestion_jobs` status record.
+2. The API enqueues `{ jobId, versionId }` to the `document-ingestion` BullMQ queue; duplicate registrations do not enqueue duplicate work.
+3. The dedicated worker consumes the identifier-only job and marks PostgreSQL status `processing`.
+4. The selected deterministic parser emits canonical blocks and warnings.
+5. Normalization and quality checks produce a pipeline-revisioned representation.
+6. Structure-aware chunks retain block, section and page links.
+7. The embedding adapter creates vectors using the configured embedding profile.
+8. One transaction stores blocks/chunks, marks status completed and promotes the version; failure leaves the previous current version untouched.
+9. Processing errors are recorded then rethrown. BullMQ performs three attempts with exponential backoff and stalled-job recovery.
 
 ## Query and answer flow
 
@@ -103,14 +106,15 @@ Versions are immutable. Atomic promotion marks exactly one version current after
 
 ## Operations and scaling
 
-The demo uses one worker and PostgreSQL job leasing (`FOR UPDATE SKIP LOCKED`) with attempts, lease expiry and bounded backoff. The queue is behind a port so a managed queue can replace it. Exact vector search is appropriate for the fixture corpus; HNSW is introduced only from measured latency/volume and must be evaluated with authorization filters.
+The demo uses Redis-backed BullMQ with one worker, three attempts and exponential backoff. Redis owns delivery state; PostgreSQL `ingestion_jobs` owns application-facing status, progress and errors. Progress events trigger UI refetches from PostgreSQL, so missed Redis events do not corrupt displayed state. Exact vector search is appropriate for the fixture corpus; HNSW is introduced only from measured latency/volume and must be evaluated with authorization filters.
 
-Production separates upload, parsing and indexing workers; uses object storage, autoscaling, dead-letter tooling, dashboards, alerts, backups and disaster recovery.
+Production scales BullMQ workers from measured load and adds object storage, Redis high availability, dead-letter tooling, dashboards, alerts, backups and disaster recovery.
 
 ## Decisions and trade-offs
 
 - Deterministic parsing over LLM parsing: predictable and testable; optional AI repair remains future work.
 - PostgreSQL + pgvector: metadata, ACLs, versions, lexical and vector search stay transactionally close; specialized search can be introduced from evidence.
+- BullMQ + Redis: use a reviewed queue implementation for retries and coordination while keeping PostgreSQL authoritative for domain status.
 - NestJS-owned orchestration: keeps policy and provider access server-side; Next.js remains a replaceable client.
 - MCP as an edge adapter: proves interoperability without forcing internal services to call themselves over a protocol.
 - TypeScript first: one toolchain across web/API/MCP; Python is isolated behind `DocumentParser` only if evaluation justifies it.
@@ -123,6 +127,7 @@ Production separates upload, parsing and indexing workers; uses object storage, 
 - Prompt injection: mandatory policy, read-only tools, trusted/untrusted context separation and server citations.
 - Local-model quality: refusal threshold and provider conformance tests; avoid presenting unsupported answers.
 - Demo scope growth: phase gates and explicit deferred capabilities.
+- Redis availability: fail upload visibly when enqueueing fails; use `noeviction`, health checks and bounded identifier-only payloads.
 
 ## AI-use declaration
 

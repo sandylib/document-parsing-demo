@@ -9,3 +9,4 @@ storage/*
 *.log
 .DS_Store
 infra/ollama/local-ca.crt
+tmp/
