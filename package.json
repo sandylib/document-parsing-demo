@@ -1,0 +1,24 @@
+{
+  "name": "document-parsing-demo",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @demo/api --filter @demo/web dev",
+    "dev:api": "pnpm --filter @demo/api start:dev",
+    "dev:web": "pnpm --filter @demo/web dev",
+    "worker": "pnpm --filter @demo/api start:worker",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint && pnpm check:boundaries",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @demo/api db:migrate",
+    "evaluate": "pnpm --filter @demo/api evaluate",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "api:types": "openapi-typescript http://localhost:3001/openapi-json -o apps/web/src/core/types/openapi.ts",
+    "setup": "bash scripts/setup-local.sh",
+    "seed": "bash scripts/seed-demo.sh"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.10.1"
+  }
+}

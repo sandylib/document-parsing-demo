@@ -1,0 +1,2 @@
+import { readFile } from 'node:fs/promises';import { resolve } from 'node:path';import { Client } from 'pg';
+const client=new Client({connectionString:process.env.DATABASE_URL??'postgres://knowledge:knowledge@localhost:5432/knowledge'});await client.connect();try{const sql=await readFile(resolve(process.cwd(),'../../infra/migrations/001_initial.sql'),'utf8');await client.query(sql);console.log('Database migration complete');}finally{await client.end();}

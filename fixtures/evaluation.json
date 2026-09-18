@@ -1,0 +1,20 @@
+[
+  {
+    "question": "Who can borrow a department device?",
+    "expectedDocument": "Student Device Policy",
+    "expectedText": "years 7 to 12",
+    "role": "public"
+  },
+  {
+    "question": "How long does a device request take?",
+    "expectedDocument": "Student Device Policy",
+    "expectedText": "five school days",
+    "role": "public"
+  },
+  {
+    "question": "What is the payroll cut-off?",
+    "expectedDocument": null,
+    "role": "public",
+    "expectedRefusal": true
+  }
+]

@@ -1,0 +1,2 @@
+import { describe,expect,it } from 'vitest';import { ChunkerService } from './chunker.service.js';
+describe('ChunkerService',()=>{it('starts a new chunk at a heading',()=>{const service=new ChunkerService();const chunks=service.chunk([{type:'heading',order:0,text:'A',sectionPath:['A'],confidence:1,warnings:[]},{type:'paragraph',order:1,text:'Body',sectionPath:['A'],confidence:1,warnings:[]},{type:'heading',order:2,text:'B',sectionPath:['B'],confidence:1,warnings:[]}]);expect(chunks).toHaveLength(2);expect(chunks[1].sectionPath).toEqual(['B']);});});

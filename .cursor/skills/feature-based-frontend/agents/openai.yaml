@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature-Based Frontend"
+  short_description: "Next.js feature-based architecture guide"
+  default_prompt: "Use $feature-based-frontend to add a new frontend domain and feature with proper layer boundaries."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Architecture NestJS"
+  short_description: "NestJS clean architecture guide"
+  default_prompt: "Use $clean-architecture-nestjs to add a new backend domain with ports, adapters, and tests."

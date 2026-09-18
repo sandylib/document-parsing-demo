@@ -1,0 +1,5 @@
+services:
+  ollama:
+    image: demo-ollama-with-ca:latest
+    build:
+      context: ./infra/ollama
