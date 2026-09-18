@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph processingStates [Processing state]
+        Received[Received] --> Processing[Processing]
+        Processing -->|Material uncertainty| ReviewRequired[Review required]
+        ReviewRequired -->|Correction or reprocess| Processing
+        Processing -->|Quality gate passes| Accepted[Accepted]
+        Processing -->|Deterministic or exhausted failure| Failed[Failed]
+        ReviewRequired -->|Rejected by owner| Failed
+    end
+
+    subgraph publicationStates [Publication eligibility]
+        NotEligible[Not eligible] -->|Approved but not yet effective| FutureEffective[Future effective]
+        NotEligible -->|Approved and effective| Current[Current]
+        FutureEffective -->|Effective date reached| Current
+        Current -->|New revision atomically promoted| Superseded[Superseded]
+        Current -->|End date reached| Expired[Expired]
+        Current -->|Owner or source withdraws| Withdrawn[Withdrawn]
+        FutureEffective -->|Owner or source withdraws| Withdrawn
+        Superseded -->|Retention or legal-hold process| Deleted[Deleted from active stores]
+        Expired -->|Retention or legal-hold process| Deleted
+        Withdrawn -->|Retention or legal-hold process| Deleted
+    end
+
+    Accepted -->|Enter publication evaluation| NotEligible
+    Failed -.-> Blocked[Failed revisions never enter publication]
+    ReplacementFailure[Replacement failure does not change the previous valid Current revision]
+    ReplacementFailure -.-> Failed
+    ReplacementFailure -.-> Current

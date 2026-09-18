@@ -1,0 +1,84 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    subgraph sourceZone [Authoritative sources]
+        direction LR
+        Repositories[Approved repositories]
+        Uploads[Controlled owner uploads]
+        SourcePolicy[Source identity, ACLs and change cursor]
+    end
+
+    subgraph intakeZone [Secure intake]
+        direction LR
+        Connector[Connector sync and reconciliation]
+        Gateway[Authenticated upload gateway]
+        Quarantine[(Protected quarantine)]
+        Originals[(Immutable originals)]
+        Metadata[(Authoritative metadata and lifecycle)]
+        Outbox[(Transactional outbox)]
+    end
+
+    subgraph processingZone [Isolated asynchronous processing]
+        direction LR
+        Dispatcher[Outbox dispatcher]
+        Queue[Durable queue]
+        Workers[Sandboxed parsing workers]
+        External[Approved OCR or layout service]
+        Candidate[Candidate blocks and quality signals]
+        Canonical[(Versioned canonical content)]
+        Quality{Quality decision}
+        Review[Authorised owner review]
+        Rejected[(Rejected or failed)]
+    end
+
+    subgraph publicationZone [Controlled publication]
+        direction LR
+        Staged[Staged lexical and vector indexes]
+        Publish[Atomic eligibility switch]
+        Retrieval[Authorised retrieval and source access]
+        Consumers[Knowledge search and RAG consumers]
+    end
+
+    subgraph governanceZone [Governance and operations]
+        direction LR
+        Identity[Enterprise identity]
+        CurrentPolicy[(Current policy cache)]
+        Operations[Audit, metrics, alerts and replay]
+    end
+
+    Repositories --> Connector
+    SourcePolicy -->|Changes and ACL references| Connector
+    Uploads --> Gateway
+    Connector --> Quarantine
+    Gateway --> Quarantine
+    Quarantine -->|Validated and scanned| Originals
+    Originals --> Metadata
+    Metadata -->|Version and event in one transaction| Outbox
+    Outbox --> Dispatcher
+    Dispatcher -->|Identifier-only message| Queue
+    Queue --> Workers
+    Originals --> Workers
+    Workers -.->|Only when approved| External
+    External -.-> Workers
+    Workers --> Candidate
+    Candidate --> Quality
+    Quality -->|Material uncertainty| Review
+    Review -->|Correct or reprocess| Workers
+    Quality -->|Unrecoverable or unsafe| Rejected
+    Quality -->|Accepted| Canonical
+    Canonical --> Staged
+    Staged --> Publish
+    Publish -->|Complete revision becomes eligible| Metadata
+    Publish --> Retrieval
+    Canonical --> Retrieval
+    Staged --> Retrieval
+    SourcePolicy --> CurrentPolicy
+    Identity --> Retrieval
+    CurrentPolicy -->|Fresh decision or fail closed| Retrieval
+    Retrieval --> Consumers
+
+    Operations -.-> Connector
+    Operations -.-> Workers
+    Operations -.-> Retrieval

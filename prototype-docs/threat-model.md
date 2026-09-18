@@ -13,7 +13,9 @@ Original documents, restricted chunks, authorization metadata, model credentials
 - Queue: Redis binds locally for the demo, uses `noeviction`, and carries only validated job/version IDs. Workers load authoritative metadata from PostgreSQL; document bodies, ACLs and model inputs never enter BullMQ. Production adds authenticated TLS, network isolation, rate/concurrency limits and Redis high availability.
 - Logging: IDs/timings/status are recorded; full restricted bodies, secrets and hidden reasoning are not.
 
-## Verified abuse cases
+## Previously recorded demo abuse checks
+
+These checks are historical observations, not a new security verification performed during the documentation revision.
 1. A public search/chat for the staff payroll fact returns no evidence and refuses.
 2. The superseded ten-day policy is not retrieved after version two is promoted.
 3. MCP without the demo token returns 401.
@@ -21,3 +23,9 @@ Original documents, restricted chunks, authorization metadata, model credentials
 
 ## Production follow-up
 Enterprise IdP and source ACL sync, malware scanning, encrypted object storage, rate limiting, security events, retention/legal hold and dependency scanning are outside the local demo.
+
+## Target-design controls
+
+The standalone solution design additionally requires enterprise identity, independently refreshed source permissions, fail-closed handling of stale policy, withdrawal/deletion propagation and isolated file processing. Copied public/staff visibility does not establish those controls.
+
+External OCR, embedding or chat services require assessment of processing location, retention, training use and contractual controls against content classification. A provider name alone establishes neither residency nor compliance. Retrieved text remains a prompt-injection risk despite instruction separation and restricted tools; server-issued source references do not verify generated claims.

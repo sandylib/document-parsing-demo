@@ -1,0 +1,47 @@
+flowchart TB
+    Validated[Validated source version] --> Inspect[Inspect pages, format and metadata]
+    Inspect --> Route{Select extraction route}
+
+    subgraph extractionRoutes [Measured extraction routes]
+        direction LR
+        Native[Native text and structure extraction]
+        OCR[Selective OCR and layout recovery]
+        Specialist[Approved specialist extraction]
+    end
+
+    Route -->|Reliable native text| Native
+    Route -->|Scanned or mixed pages| OCR
+    Route -->|Complex table or visual| Specialist
+
+    Native --> Normalise[Normalise and attach provenance]
+    OCR --> Normalise
+    Specialist --> Normalise
+    Normalise --> Enrich[Attach owner, classification, lifecycle and policy reference]
+    Enrich --> Checks[Run coverage, order, hierarchy, table and anomaly checks]
+    Checks --> Decide{Quality decision}
+
+    subgraph qualityOutcomes [Quality outcomes]
+        direction LR
+        Canonical[(Immutable canonical revision)]
+        Review[Owner compares source region and output]
+        Reject[Reject with actionable reason]
+    end
+
+    Decide -->|Accepted| Canonical
+    Decide -->|Material uncertainty| Review
+    Decide -->|Unsupported, unsafe or unreadable| Reject
+    Review -->|Correct extraction| Normalise
+    Review -->|Use another route| Route
+
+    subgraph derivedPublication [Derived output and controlled publication]
+        direction LR
+        Chunk[Create structure-aware chunks]
+        Index[Build derived lexical and vector indexes]
+        Validate[Validate completeness and retrieval profile]
+        Publish[Atomically mark complete revision eligible]
+    end
+
+    Canonical --> Chunk
+    Chunk --> Index
+    Index --> Validate
+    Validate --> Publish

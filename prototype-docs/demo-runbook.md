@@ -31,4 +31,4 @@ pnpm --filter @demo/api exec tsx scripts/smoke-mcp.ts
 Show that the external MCP client discovers only `search_knowledge` and `get_source`, while the handlers reuse authorization-aware application use cases.
 
 ## Close
-Open [solution-design.md](solution-design.md) and summarize production evolution: source connectors, specialist OCR/layout adapters, enterprise ACL synchronization, object storage, measured BullMQ worker scaling and measured search scaling.
+Open the [interview solution design](../submission/solution-design.md) and summarize production evolution: source connectors, specialist OCR/layout adapters, enterprise ACL synchronization, object storage, measured BullMQ worker scaling and measured search scaling.

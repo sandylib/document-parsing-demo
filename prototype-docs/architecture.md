@@ -1,4 +1,6 @@
-# Architecture
+# Prototype architecture
+
+This describes the existing local prototype. The proposed production architecture, quality gates, permission freshness and reliable queue handoff are defined in the [interview solution design](../submission/solution-design.md). Server-issued citations establish source traceability; this prototype does not validate every generated claim against its evidence.
 
 ## Container view
 
@@ -74,7 +76,7 @@ sequenceDiagram
     else sufficient evidence
         API->>M: trusted instructions and bounded evidence
         M-->>API: provider-neutral stream
-        API-->>UI: text deltas and validated citations
+        API-->>UI: text deltas and server-issued source references
     end
 ```
 

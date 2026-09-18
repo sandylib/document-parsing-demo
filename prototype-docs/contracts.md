@@ -1,4 +1,4 @@
-# Architecture Contracts
+# Prototype contracts and target extensions
 
 ## Canonical document
 
@@ -49,7 +49,11 @@ Evidence is immutable for one answer run and includes stable evidence ID, chunk 
 
 ## Pipeline revision
 
-A revision identifies parser, normalizer, chunker/configuration, embedding model/dimensions/distance metric, retrieval configuration, prompt/citation policy and tool schema.
+The target design records parser/OCR, normalizer, chunker configuration and embedding profile to reproduce processing. Downstream retrieval and answer policies should also be versioned separately.
+
+The prototype uses a `demo-v1` pipeline revision label and stores the embedding model name on chunks; these are not complete configuration records. Its initial database migration fixes vectors at 1024 dimensions. A model with different dimensions requires a compatible schema/index migration and re-indexing, not only an environment-variable change.
+
+Prototype access metadata is a public/staff visibility value, not an enterprise ACL. Currency uses `is_current`; effective dates, source-policy synchronisation and revocation freshness belong to the proposed solution.
 
 ## MCP
 

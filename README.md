@@ -1,8 +1,8 @@
 # Document Parsing and Grounded Knowledge Demo
 
-A local, architecture-first demonstration for the Department of Education solution-design exercise. It turns PDF/Markdown/TXT into versioned canonical blocks and chunks, retrieves authorised current evidence, and streams grounded Qwen answers with server-owned citations.
+A local prototype supporting the Department of Education document-parsing solution-design exercise. It turns PDF/Markdown/TXT into versioned canonical blocks and chunks. Authorised retrieval and grounded answers demonstrate downstream use of that parsed content.
 
-The primary submission is [docs/solution-design.md](docs/solution-design.md). See [docs/architecture.md](docs/architecture.md), [docs/evaluation.md](docs/evaluation.md), and [docs/demo-runbook.md](docs/demo-runbook.md).
+The self-contained interview submission starts at [submission/README.md](submission/README.md). The code is a supporting prototype, not a required submission. Prototype-specific notes are in [prototype-docs/architecture.md](prototype-docs/architecture.md), [prototype-docs/evaluation.md](prototype-docs/evaluation.md), and [prototype-docs/demo-runbook.md](prototype-docs/demo-runbook.md).
 
 ## Architecture
 - Next.js feature layers: `app → features → domains → core`.
