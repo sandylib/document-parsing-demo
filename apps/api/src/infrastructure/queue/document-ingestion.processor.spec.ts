@@ -64,11 +64,6 @@ describe('DocumentIngestionProcessor', () => {
     const processor = new DocumentIngestionProcessor(processDocument as never, jobs as never);
 
     await expect(processor.process(job({ attemptsMade: 2 }))).rejects.toThrow('parser failed');
-    expect(jobs.recordAttemptFailure).toHaveBeenCalledWith(
-      'job-id',
-      3,
-      'parser failed',
-      true,
-    );
+    expect(jobs.recordAttemptFailure).toHaveBeenCalledWith('job-id', 3, 'parser failed', true);
   });
 });

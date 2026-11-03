@@ -1,2 +1,14 @@
-import { describe,expect,it } from 'vitest';import { TextDocumentParser } from './text-document.parser.js';
-describe('TextDocumentParser',()=>{it('preserves markdown headings and lists',async()=>{const result=await new TextDocumentParser().parse({content:Buffer.from('# Policy\n\n- One\n- Two'),mimeType:'text/markdown',originalName:'a.md'});expect(result.blocks.map(b=>b.type)).toEqual(['heading','list']);expect(result.blocks[1].sectionPath).toEqual(['Policy']);});});
+import { describe, expect, it } from 'vitest';
+import { TextDocumentParser } from './text-document.parser.js';
+
+describe('TextDocumentParser', () => {
+  it('preserves markdown headings and lists', async () => {
+    const result = await new TextDocumentParser().parse({
+      content: Buffer.from('# Policy\n\n- One\n- Two'),
+      mimeType: 'text/markdown',
+      originalName: 'a.md',
+    });
+    expect(result.blocks.map((b) => b.type)).toEqual(['heading', 'list']);
+    expect(result.blocks[1].sectionPath).toEqual(['Policy']);
+  });
+});

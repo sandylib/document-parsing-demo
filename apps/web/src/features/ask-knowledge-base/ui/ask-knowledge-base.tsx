@@ -1,3 +1,96 @@
-"use client";
-import { useRef,useState,type FormEvent } from 'react';import type { Citation } from '@demo/contracts';import { streamChat } from '@/domains/chat';
-export function AskKnowledgeBase(){const[question,setQuestion]=useState('');const[answer,setAnswer]=useState('');const[citations,setCitations]=useState<Citation[]>([]);const[role,setRole]=useState<'public'|'staff'>('public');const[loading,setLoading]=useState(false);const controller=useRef<AbortController|null>(null);async function submit(event:FormEvent){event.preventDefault();if(!question.trim())return;controller.current?.abort();controller.current=new AbortController();setAnswer('');setCitations([]);setLoading(true);try{await streamChat(question,role,event=>{if(event.type==='text.delta')setAnswer(value=>value+event.text);if(event.type==='citation.available')setCitations(value=>value.some(c=>c.evidenceId===event.citation.evidenceId)?value:[...value,event.citation]);if(event.type==='message.failed')setAnswer(value=>value||event.message)},controller.current.signal)}catch(error){if((error as Error).name!=='AbortError')setAnswer((error as Error).message)}finally{setLoading(false)}}return <section className="panel chat"><div className="panelHeading"><div><span className="eyebrow">Mandatory grounding</span><h2>Ask the knowledge base</h2></div><span className="step">03</span></div><form onSubmit={submit} className="askForm"><textarea value={question} onChange={e=>setQuestion(e.target.value)} placeholder="What does the policy say?" rows={3}/><div className="askActions"><select value={role} onChange={e=>setRole(e.target.value as 'public'|'staff')} aria-label="Demo role"><option value="public">Public user</option><option value="staff">Staff user</option></select><button className="primary" disabled={loading}>{loading?'Grounding…':'Ask'}</button></div></form><div className="answer" aria-live="polite">{answer||<span className="muted">Answers appear here only when authorised evidence is available.</span>}</div>{citations.length>0&&<div className="citations"><span className="eyebrow">Verified sources</span>{citations.map(c=><article key={c.evidenceId}><strong>{c.title}</strong><span>{[...c.sectionPath,c.page?`page ${c.page}`:''].filter(Boolean).join(' · ')}</span><p>{c.excerpt}</p></article>)}</div>}</section>}
+'use client';
+import { useRef, useState, type FormEvent } from 'react';
+import type { Citation } from '@demo/contracts';
+import { streamChat } from '@/domains/chat';
+
+export function AskKnowledgeBase() {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [role, setRole] = useState<'public' | 'staff'>('public');
+  const [loading, setLoading] = useState(false);
+  const controller = useRef<AbortController | null>(null);
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!question.trim()) return;
+    controller.current?.abort();
+    controller.current = new AbortController();
+    setAnswer('');
+    setCitations([]);
+    setLoading(true);
+    try {
+      await streamChat(
+        question,
+        role,
+        (event) => {
+          if (event.type === 'text.delta') setAnswer((value) => value + event.text);
+          if (event.type === 'citation.available')
+            setCitations((value) =>
+              value.some((c) => c.evidenceId === event.citation.evidenceId)
+                ? value
+                : [...value, event.citation],
+            );
+          if (event.type === 'message.failed') setAnswer((value) => value || event.message);
+        },
+        controller.current.signal,
+      );
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') setAnswer((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <section className="panel chat">
+      <div className="panelHeading">
+        <div>
+          <span className="eyebrow">Mandatory grounding</span>
+          <h2>Ask the knowledge base</h2>
+        </div>
+        <span className="step">03</span>
+      </div>
+      <form onSubmit={submit} className="askForm">
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="What does the policy say?"
+          rows={3}
+        />
+        <div className="askActions">
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as 'public' | 'staff')}
+            aria-label="Demo role"
+          >
+            <option value="public">Public user</option>
+            <option value="staff">Staff user</option>
+          </select>
+          <button className="primary" disabled={loading}>
+            {loading ? 'Grounding…' : 'Ask'}
+          </button>
+        </div>
+      </form>
+      <div className="answer" aria-live="polite">
+        {answer || (
+          <span className="muted">
+            Answers appear here only when authorised evidence is available.
+          </span>
+        )}
+      </div>
+      {citations.length > 0 && (
+        <div className="citations">
+          <span className="eyebrow">Verified sources</span>
+          {citations.map((c) => (
+            <article key={c.evidenceId}>
+              <strong>{c.title}</strong>
+              <span>
+                {[...c.sectionPath, c.page ? `page ${c.page}` : ''].filter(Boolean).join(' · ')}
+              </span>
+              <p>{c.excerpt}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}

@@ -16,9 +16,12 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "api:types": "openapi-typescript http://localhost:3001/openapi-json -o apps/web/src/core/types/openapi.ts",
     "setup": "bash scripts/setup-local.sh",
-    "seed": "bash scripts/seed-demo.sh"
+    "seed": "bash scripts/seed-demo.sh",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/scripts/**/*.ts\" \"packages/*/src/**/*.ts\" \"scripts/**/*.{mjs,js}\"",
+    "format:check": "prettier --check \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/scripts/**/*.ts\" \"packages/*/src/**/*.ts\" \"scripts/**/*.{mjs,js}\""
   },
   "devDependencies": {
-    "openapi-typescript": "^7.10.1"
+    "openapi-typescript": "^7.10.1",
+    "prettier": "^3.9.8"
   }
 }

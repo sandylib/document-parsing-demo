@@ -1,2 +1,28 @@
-import { readFile } from 'node:fs/promises';import { resolve } from 'node:path';
-type Case={question:string;expectedText?:string;expectedRefusal?:boolean;role:'public'|'staff'};const cases=JSON.parse(await readFile(resolve(process.cwd(),'../../fixtures/evaluation.json'),'utf8')) as Case[];const base=process.env.API_URL??'http://localhost:3001';let passed=0;for(const item of cases){const response=await fetch(`${base}/documents/search?query=${encodeURIComponent(item.question)}`,{headers:{'x-demo-role':item.role}});const results=await response.json() as Array<{text:string}>;const ok=item.expectedRefusal?results.length===0:results.some(r=>r.text.includes(item.expectedText??''));passed+=Number(ok);console.log(`${ok?'PASS':'FAIL'} ${item.question}`);}console.log(`${passed}/${cases.length} retrieval checks passed`);process.exitCode=passed===cases.length?0:1;
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+type Case = {
+  question: string;
+  expectedText?: string;
+  expectedRefusal?: boolean;
+  role: 'public' | 'staff';
+};
+const cases = JSON.parse(
+  await readFile(resolve(process.cwd(), '../../fixtures/evaluation.json'), 'utf8'),
+) as Case[];
+const base = process.env.API_URL ?? 'http://localhost:3001';
+let passed = 0;
+for (const item of cases) {
+  const response = await fetch(
+    `${base}/documents/search?query=${encodeURIComponent(item.question)}`,
+    { headers: { 'x-demo-role': item.role } },
+  );
+  const results = (await response.json()) as Array<{ text: string }>;
+  const ok = item.expectedRefusal
+    ? results.length === 0
+    : results.some((r) => r.text.includes(item.expectedText ?? ''));
+  passed += Number(ok);
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${item.question}`);
+}
+console.log(`${passed}/${cases.length} retrieval checks passed`);
+process.exitCode = passed === cases.length ? 0 : 1;

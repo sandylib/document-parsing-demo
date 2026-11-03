@@ -16,10 +16,7 @@ import { redisConnection } from '../queue/redis-connection.js';
     }),
     BullModule.registerQueue({ name: DOCUMENT_INGESTION_QUEUE }),
   ],
-  providers: [
-    BullMqJobQueueAdapter,
-    { provide: JOB_QUEUE, useExisting: BullMqJobQueueAdapter },
-  ],
+  providers: [BullMqJobQueueAdapter, { provide: JOB_QUEUE, useExisting: BullMqJobQueueAdapter }],
   exports: [JOB_QUEUE],
 })
 export class BullMqProducerModule {}

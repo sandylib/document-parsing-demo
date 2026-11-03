@@ -3,6 +3,7 @@ import type { Visibility } from '../../core/knowledge.types.js';
 import type { EmbeddingModel } from '../ports/model.port.js';
 import type { RetrievalRepository } from '../ports/repositories.port.js';
 import { EMBEDDING_MODEL, RETRIEVAL_REPOSITORY } from '../ports/tokens.js';
+
 @Injectable()
 export class SearchKnowledgeUseCase {
   constructor(

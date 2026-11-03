@@ -11,6 +11,7 @@ export interface ParseResult {
 }
 export interface DocumentParser {
   readonly name: string;
+
   supports(input: Pick<ParseInput, 'mimeType' | 'originalName'>): boolean;
   parse(input: ParseInput): Promise<ParseResult>;
 }

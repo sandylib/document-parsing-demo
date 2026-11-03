@@ -20,11 +20,7 @@ export class DocumentIngestionProcessor extends WorkerHost {
   }
 
   async process(job: Job<DocumentIngestionJob>): Promise<void> {
-    if (
-      job.name !== PROCESS_DOCUMENT_JOB ||
-      job.id !== job.data.jobId ||
-      !job.data.versionId
-    ) {
+    if (job.name !== PROCESS_DOCUMENT_JOB || job.id !== job.data.jobId || !job.data.versionId) {
       throw new Error('Invalid document-ingestion job');
     }
 

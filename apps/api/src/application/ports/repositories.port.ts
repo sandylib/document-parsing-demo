@@ -1,7 +1,14 @@
-import type { CanonicalBlockDraft, ChunkDraft, DocumentSummary, Evidence, Visibility } from '../../core/knowledge.types.js';
+import type {
+  CanonicalBlockDraft,
+  ChunkDraft,
+  DocumentSummary,
+  Evidence,
+  Visibility,
+} from '../../core/knowledge.types.js';
 
 export interface UploadRegistration {
   documentId?: string;
+
   title: string;
   visibility: Visibility;
   checksum: string;
@@ -10,7 +17,12 @@ export interface UploadRegistration {
   storageKey: string;
   pipelineRevision: string;
 }
-export interface UploadReceipt { documentId: string; versionId: string; jobId: string; duplicate: boolean }
+export interface UploadReceipt {
+  documentId: string;
+  versionId: string;
+  jobId: string;
+  duplicate: boolean;
+}
 export interface ProcessableVersion {
   id: string;
   documentId: string;
@@ -39,16 +51,32 @@ export interface JobRepository {
   markEnqueueFailed(jobId: string, message: string): Promise<void>;
   markProcessing(jobId: string, attempt: number): Promise<void>;
   updateProgress(jobId: string, progress: number): Promise<void>;
-  recordAttemptFailure(jobId: string, attempt: number, message: string, terminal: boolean): Promise<void>;
+  recordAttemptFailure(
+    jobId: string,
+    attempt: number,
+    message: string,
+    terminal: boolean,
+  ): Promise<void>;
 }
 export interface RetrievalRepository {
-  search(queryEmbedding: number[], query: string, role: Visibility, limit: number): Promise<Evidence[]>;
+  search(
+    queryEmbedding: number[],
+    query: string,
+    role: Visibility,
+    limit: number,
+  ): Promise<Evidence[]>;
   getEvidence(id: string, role: Visibility): Promise<Evidence | null>;
 }
 export interface AnswerRunRepository {
   record(input: {
-    messageId: string; role: Visibility; question: string; pipelineRevision: string;
-    modelProfile: string; evidenceIds: string[]; toolCalls: unknown[];
-    outcome: string; durationMs: number;
+    messageId: string;
+    role: Visibility;
+    question: string;
+    pipelineRevision: string;
+    modelProfile: string;
+    evidenceIds: string[];
+    toolCalls: unknown[];
+    outcome: string;
+    durationMs: number;
   }): Promise<void>;
 }
